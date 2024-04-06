@@ -1,0 +1,44 @@
+{
+  "name": "with-refresh-token",
+  "version": "0.1.0",
+  "description": "A wrapper middleware for Next.js to handle refresh token",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mkuchak/with-refresh-token.git"
+  },
+  "author": {
+    "name": "Marcos Kuchak",
+    "email": "mkuchak@gmail.com",
+    "url": "https://kuch.dev"
+  },
+  "keywords": [
+    "utility",
+    "library",
+    "middleware",
+    "next-middleware",
+    "next.js",
+    "next",
+    "refresh-token",
+    "refresh",
+    "jwt",
+    "access-token",
+    "tokens",
+    "jsonwebtoken"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
+  "files": [
+    "./dist/"
+  ],
+  "scripts": {
+    "build": "tsup ./src/index.ts --dts --minify --clean"
+  },
+  "dependencies": {
+    "next": "^14.1.4"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.4"
+  }
+}
