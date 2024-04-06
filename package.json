@@ -1,6 +1,6 @@
 {
   "name": "with-refresh-token",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "A wrapper middleware for Next.js to handle refresh token",
   "repository": {
     "type": "git",

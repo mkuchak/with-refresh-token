@@ -27,6 +27,8 @@ Finally, import `withRefreshToken` and use it in your middleware stack.
 // src/middleware.ts
 import { withRefreshToken } from "./lib/with-refresh-token";
 
+export const config = { /* config */ }; // see at the end the suggested `config`
+
 function middleware(
   _req: NextRequest,
   res: NextResponse,
@@ -50,7 +52,7 @@ The `getMiddleware` function takes an object with the following properties:
 - `shouldRefresh: (req: NextRequest) => boolean` - A function that returns `true` if the access token should be refreshed.
 - `fetchTokenPair: (req: NextRequest) => Promise<TokenPair>` - A function that fetches new token pair.
 - `onSuccess: (res: NextResponse, tokenPair: TokenPair) => void` - A function that is called when the new token pair is fetched successfully.
-- `onError?: (req: NextRequest, error: any) => void` - An optional function that is called when an error occurs.
+- `onError?: (req: NextRequest, error: unknown) => void` - An optional function that is called when an error occurs.
 
 ### TokenPair
 
@@ -91,7 +93,7 @@ export const withRefreshToken = getMiddleware({
     });
     return await response.json(); // `TokenPair` object should be returned
   },
-  onSuccess: async (res, tokenPair) => {
+  onSuccess: (res, tokenPair) => {
     // with the new token pair, set the new access token and refresh token to the cookies
     // so that the next request and your Server Components can use the new token
     res.cookies.set({
@@ -107,7 +109,7 @@ export const withRefreshToken = getMiddleware({
       path: "/",
     });
   },
-  onError: async (_req, error) => {
+  onError: (_req, error) => {
     // optional function that is called when an error occurs
     // you can redirect the user to the login page if is unauthorized
     // if (error instanceof Response && error.status === 401) {
@@ -116,6 +118,47 @@ export const withRefreshToken = getMiddleware({
     console.error(error);
   },
 });
+```
+
+### Suggested `config` for `middleware.ts`
+
+This configuration suggestion is available in the Next.js documentation itself. It will prioritize the execution of the middleware on all accessed pages. Adapt it according to your middleware needs.
+
+```ts
+// ...
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+    {
+      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      has: [{ type: "header", key: "x-present" }],
+      missing: [{ type: "header", key: "x-missing", value: "prefetch" }],
+    },
+  ],
+};
+
+// ...
 ```
 
 ## Philosophy
