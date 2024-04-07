@@ -19,7 +19,11 @@ export type GetMiddlewareOptions = {
   shouldRefresh: (req: NextRequest) => boolean;
   fetchTokenPair: (req: NextRequest) => Promise<TokenPair>;
   onSuccess: (res: NextResponse, tokenPair: TokenPair) => void;
-  onError?: (req: NextRequest, error: unknown) => void;
+  onError?: (
+    req: NextRequest,
+    res: NextResponse,
+    error: unknown
+  ) => NextResponse | void;
 };
 
 export const applyCookiesOnNextResponse = (
@@ -61,11 +65,13 @@ export const getMiddleware =
       try {
         const tokenPair = await fetchTokenPair(req);
         onSuccess(res, tokenPair);
-        applyCookiesOnNextResponse(req, res);
       } catch (error) {
-        onError?.(req, error);
+        const next = onError?.(req, res, error);
+        if (next) return next;
       }
     }
+
+    applyCookiesOnNextResponse(req, res);
 
     return middlewareFn?.(req, res, event) ?? res;
   };

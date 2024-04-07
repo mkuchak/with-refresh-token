@@ -52,7 +52,7 @@ The `getMiddleware` function takes an object with the following properties:
 - `shouldRefresh: (req: NextRequest) => boolean` - A function that returns `true` if the access token should be refreshed.
 - `fetchTokenPair: (req: NextRequest) => Promise<TokenPair>` - A function that fetches new token pair.
 - `onSuccess: (res: NextResponse, tokenPair: TokenPair) => void` - A function that is called when the new token pair is fetched successfully.
-- `onError?: (req: NextRequest, error: unknown) => void` - An optional function that is called when an error occurs.
+- `onError?: (req: NextRequest, res: NextResponse, error: unknown) => NextResponse | void` - An optional function that is called when an error occurs.
 
 ### TokenPair
 
@@ -73,19 +73,24 @@ export const withRefreshToken = getMiddleware({
   // and check if it is expired
   shouldRefresh: (req) => {
     const accessToken = req.cookies.get("access-token")?.value;
-    if (!accessToken) return true;
+    if (!accessToken) return true; // user is not logged in but may have a refresh token
     try {
       const exp = jwtDecode(accessToken).exp; // decode the jwt and get the expiration time
-      if (!exp) return true;
+      if (!exp) return false; // token does not have an expiration time
       return exp - DEFAULT_OFFSET_SECONDS <= Date.now() / 1000; // check if the token is expired
     } catch {
-      return true;
+      return true; // invalid token but a refresh token may be available
     }
   },
   fetchTokenPair: async (req) => {
     // if true is returned from shouldRefresh, this function will be called
     // do whatever you need to get the new token pair
     const refreshToken = req.cookies.get("refresh-token")?.value;
+    if (!refreshToken) {
+      // this error is caught by the onError function or ignored if not provided, following
+      // the middleware flow normally
+      throw new Error("Refresh token not found");
+    }
     const response = await fetch("http://localhost:3000/api/refresh-token", {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
@@ -95,24 +100,26 @@ export const withRefreshToken = getMiddleware({
   },
   onSuccess: (res, tokenPair) => {
     // with the new token pair, set the new access token and refresh token to the cookies
-    // so that the next request and your Server Components can use the new token
+    // so that the middleware and Server Components can use the new token to make auth requests
     res.cookies.set({
       name: "access-token",
       value: tokenPair.accessToken,
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     });
     res.cookies.set({
       name: "refresh-token",
       value: tokenPair.refreshToken,
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     });
   },
-  onError: (_req, error) => {
-    // optional function that is called when an error occurs
-    // you can redirect the user to the login page if is unauthorized
+  onError: (_req, _res, error) => {
+    // optional function that is called when an error occurs during the refresh token process
+    // you can clear the cookies and redirect to the login page if is unauthorized
     // if (error instanceof Response && error.status === 401) {
+    //   res.cookies.set({ name: "access-token", value: "", maxAge: 0, path: "/" });
+    //   res.cookies.set({ name: "refresh-token", value: "", maxAge: 0, path: "/" });
     //   return NextResponse.redirect(new URL("/login", req.url));
     // }
     console.error(error);
